@@ -27,6 +27,35 @@ from src.tagger import to_valence
 
 
 # ----------------------------------------------------------------------
+# 0. Calibrazione sul prior della collezione
+# ----------------------------------------------------------------------
+def collection_prior(all_probs: list[np.ndarray]) -> np.ndarray:
+    """
+    Frequenza media con cui il tagger attiva ciascuna emozione sull'intera
+    collezione. Si stima senza etichette: e' semplicemente la media delle
+    distribuzioni predette.
+    """
+    return np.vstack(all_probs).mean(axis=0).astype(np.float32)
+
+
+def calibrate(probs: np.ndarray, prior: np.ndarray) -> np.ndarray:
+    """
+    Divide ogni probabilita' per la frequenza media della sua classe e
+    rinormalizza. Il classificatore sovrastima sistematicamente alcune classi
+    (qui 'calm' e 'disgust') e ne sottostima altre ('neutral', 'happy'): la
+    divisione per il prior riporta le classi su una base comparabile, e cio'
+    che conta diventa quanto un segmento attiva una classe *rispetto al suo
+    livello abituale*.
+
+    E' lo stesso principio dell'inverse user frequency nei sistemi di
+    raccomandazione: un accordo su un item che piace a tutti porta meno
+    informazione di un accordo su un item controverso.
+    """
+    p = np.asarray(probs, dtype=np.float32) / np.maximum(prior, 1e-6)
+    return (p / p.sum(axis=1, keepdims=True)).astype(np.float32)
+
+
+# ----------------------------------------------------------------------
 # 1. Soft term frequency
 # ----------------------------------------------------------------------
 def soft_tf(probs: np.ndarray) -> dict[str, float]:

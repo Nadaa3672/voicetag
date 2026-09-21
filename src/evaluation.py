@@ -55,12 +55,27 @@ NATURAL_QUERIES = [
 # Metriche
 # ----------------------------------------------------------------------
 def precision_at_k(ranked: list[str], relevant: set[str], k: int) -> float:
-    if k == 0:
+    """
+    Precision@k nella definizione standard: rilevanti fra i primi k diviso k.
+    Il denominatore e' k e non il numero di documenti effettivamente restituiti,
+    altrimenti un sistema che restituisce un solo documento rilevante otterrebbe
+    P@5 = 1, premiando la scarsa copertura invece di penalizzarla.
+    """
+    if k <= 0:
         return 0.0
-    top = ranked[:k]
-    if not top:
+    return sum(1 for d in ranked[:k] if d in relevant) / k
+
+
+def r_precision(ranked: list[str], relevant: set[str]) -> float:
+    """
+    Precision calcolata a k = |R|. Metrica robusta quando gli insiemi di
+    documenti rilevanti hanno dimensioni molto diverse fra una query e l'altra,
+    come accade qui (da 26 a 140 conversazioni).
+    """
+    r = len(relevant)
+    if r == 0:
         return 0.0
-    return sum(1 for d in top if d in relevant) / len(top)
+    return sum(1 for d in ranked[:r] if d in relevant) / r
 
 
 def recall_at_k(ranked: list[str], relevant: set[str], k: int) -> float:
@@ -109,6 +124,7 @@ def run_queries(index: VoiceTagIndex, judgments: dict[str, set],
             row[f"P@{k}"] = precision_at_k(ranked, relevant, k)
             row[f"R@{k}"] = recall_at_k(ranked, relevant, k)
             row[f"F1@{k}"] = f1(row[f"P@{k}"], row[f"R@{k}"])
+        row["R-prec"] = r_precision(ranked, relevant)
         row["AP"] = average_precision(ranked, relevant)
         rows.append(row)
         per_query.append(row)
@@ -177,9 +193,16 @@ def tagger_accuracy(manifest: list[dict], documents: dict[str, dict]) -> dict:
             coarse_ok += int(vp == vt)
             cm_coarse[config.VALENCE_LEVELS.index(vt),
                       config.VALENCE_LEVELS.index(vp)] += 1
+    # riferimenti onesti: livello di caso e classe di maggioranza
+    support_fine = cm_fine.sum(axis=1)
+    support_coarse = cm_coarse.sum(axis=1)
     return {
         "accuratezza_8_classi": fine_ok / max(fine_n, 1),
         "accuratezza_3_livelli": coarse_ok / max(coarse_n, 1),
+        "caso_8_classi": 1.0 / n_fine,
+        "caso_3_livelli": 1.0 / n_coarse,
+        "maggioranza_8_classi": float(support_fine.max()) / max(fine_n, 1),
+        "maggioranza_3_livelli": float(support_coarse.max()) / max(coarse_n, 1),
         "n_turni": fine_n,
         "confusione_8": cm_fine.tolist(),
         "confusione_3": cm_coarse.tolist(),

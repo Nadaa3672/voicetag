@@ -66,14 +66,20 @@ HOP_LENGTH = 256
 # ----------------------------------------------------------------------
 # Segmentazione della conversazione
 # ----------------------------------------------------------------------
-WINDOW_SEC = 3.0        # ampiezza della finestra
-HOP_SEC = 1.5           # avanzamento fra finestre consecutive (50% overlap)
+WINDOW_SEC = 3.0        # ampiezza della finestra (vincolata: e' la durata su cui
+                        # il tagger e' stato addestrato)
+HOP_SEC = 1.0           # avanzamento fra finestre consecutive
 MIN_TAIL_SEC = 1.0      # code piu' corte di cosi' vengono scartate
 
 # ----------------------------------------------------------------------
 # Parametri di tagging / indicizzazione
 # ----------------------------------------------------------------------
-DF_THRESHOLD = 0.15     # tf minima perche' un tag conti nella document frequency
+DF_THRESHOLD = 0.15       # tf normalizzata minima perche' un tag conti nella df
+POSTING_THRESHOLD = 0.02  # tf normalizzata minima perche' un documento entri
+                          # nella posting list di un tag: la softmax non e' mai
+                          # esattamente zero, quindi senza potatura ogni lista
+                          # conterrebbe l'intera collezione e l'indice non
+                          # ridurrebbe nulla
 MMR_LAMBDA = 0.7        # bilanciamento rilevanza / non-ridondanza in MMR
 MAX_TAGS = 4            # numero massimo di tag fini mostrati per conversazione
 MIN_TAG_WEIGHT = 0.05   # peso minimo perche' un tag sia candidato
@@ -84,9 +90,12 @@ MIN_TAG_WEIGHT = 0.05   # peso minimo perche' un tag sia candidato
 # Solo attori MAI visti dal tagger in addestramento: la valutazione del
 # sistema di retrieval resta speaker-independent.
 HELDOUT_ACTORS = [1, 2, 3, 4, 5, 6, 21, 22]
-GAP_SEC = 0.25          # silenzio inserito fra due turni della conversazione
-CLIPS_PER_CONV = (4, 7)  # numero di clip per conversazione (min, max)
-MAX_CLIP_REUSE = 2      # quante volte una stessa clip puo' comparire nel corpus
-N_CONVERSATIONS = 200
+GAP_SEC = 0.25           # silenzio inserito fra due turni della conversazione
+CLIPS_PER_CONV = (8, 13)  # numero di turni per conversazione (min, max): le clip
+                          # RAVDESS durano circa 1,2 s una volta tolto il silenzio,
+                          # quindi servono almeno otto turni perche' il documento
+                          # abbia abbastanza finestre da giustificare una tf
+MAX_CLIP_REUSE = 6       # quante volte una stessa clip puo' comparire nel corpus
+N_CONVERSATIONS = 150
 
 SEED = 42
