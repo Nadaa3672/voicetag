@@ -137,6 +137,8 @@ with tab_index:
 
         tagger = load_tagger()
         probs, spans = tagger.tag_file(dest)
+        if index.prior is not None:          # stessa calibrazione usata in indicizzazione
+            probs = tagging.calibrate(probs, index.prior)
         tf = tagging.soft_tf(probs)
         sim = index.tag_sim if index.tag_sim is not None else np.eye(len(config.EMOTIONS))
         tags = tagging.mmr_select(tf, sim)
