@@ -1,0 +1,17 @@
+# Core
+numpy
+pandas
+scipy
+scikit-learn
+matplotlib
+tqdm
+
+# Audio
+librosa
+soundfile
+
+# Modello
+torch
+
+# Interfaccia web
+streamlit
