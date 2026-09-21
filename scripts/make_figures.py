@@ -49,7 +49,7 @@ def _clean(ax, ygrid=True):
 # ----------------------------------------------------------------------
 def fig_idf(index: VoiceTagIndex, path):
     tags = index.vocab
-    df = [len(index.postings[t]) for t in tags]
+    df = [index.df.get(t, 0) for t in tags]
     idf = [index.idf[t] for t in tags]
     order = np.argsort(idf)
     tags = [tags[i] for i in order]
@@ -67,7 +67,7 @@ def fig_idf(index: VoiceTagIndex, path):
                     va="center", fontsize=8.5, color=INK_SOFT)
         ax.set_title(title)
         ax.set_xlabel(xlabel)
-        ax.set_xlim(0, max(vals) * 1.18)
+        ax.set_xlim(0, (max(vals) or 1.0) * 1.18)
         _clean(ax, ygrid=False)
     fig.suptitle("Statistiche dei tag sulla collezione", fontweight="bold", y=1.02)
     fig.tight_layout()
@@ -188,6 +188,44 @@ def fig_confusion(evaluation: dict, path):
     plt.close(fig)
 
 
+def fig_sensitivity(sens: dict, path):
+    """Efficienza contro efficacia nella potatura, e stabilita' rispetto a tau."""
+    fig, axes = plt.subplots(1, 2, figsize=(9.6, 3.7))
+
+    # a) soglia di document frequency
+    ax = axes[0]
+    taus = [r["soglia_df"] for r in sens["soglia_df"]]
+    for j, (key, label) in enumerate((("MAP", "MAP"), ("R-prec", "R-precision"))):
+        ax.plot(taus, [r[key] for r in sens["soglia_df"]], marker="o", markersize=6,
+                lw=2, color=SERIES[j], label=label, zorder=3)
+    ax.set_xlabel("soglia di document frequency  $\\tau$")
+    ax.set_ylabel("valore medio")
+    ax.set_title("Stabilita' rispetto a $\\tau$")
+    ax.set_ylim(0, 1)
+    ax.legend(frameon=False, fontsize=9)
+    _clean(ax)
+
+    # b) potatura: lunghezza dell'indice contro MAP
+    ax = axes[1]
+    rows = sens["potatura_posting"]
+    post = [r["posting"] for r in rows]
+    maps = [r["MAP"] for r in rows]
+    ax.plot(post, maps, marker="o", markersize=6, lw=2, color=SERIES[0], zorder=3)
+    for r in rows:
+        ax.annotate(f"{r['soglia_posting']:.2f}", (r["posting"], r["MAP"]),
+                    textcoords="offset points", xytext=(0, 9), ha="center",
+                    fontsize=8, color=INK_SOFT)
+    ax.set_xlabel("posting totali nell'indice")
+    ax.set_ylabel("MAP")
+    ax.set_title("Potatura: dimensione dell'indice contro efficacia")
+    ax.set_ylim(min(maps) * 0.9, max(maps) * 1.08)
+    _clean(ax)
+
+    fig.tight_layout()
+    fig.savefig(path, bbox_inches="tight")
+    plt.close(fig)
+
+
 # ----------------------------------------------------------------------
 def main():
     config.FIGURES_DIR.mkdir(parents=True, exist_ok=True)
@@ -205,6 +243,11 @@ def main():
                 manifest[0]["conv_id"])
     fig_timeline(index, manifest, config.FIGURES_DIR / "fig4_timeline.png", conv_id=pick)
     fig_confusion(evaluation, config.FIGURES_DIR / "fig5_confusione.png")
+
+    sens_path = config.RESULTS_DIR / "sensitivity.json"
+    if sens_path.exists():
+        sens = json.loads(sens_path.read_text(encoding="utf-8"))
+        fig_sensitivity(sens, config.FIGURES_DIR / "fig6_sensibilita.png")
     print(f"Figure salvate in {config.FIGURES_DIR}")
 
 

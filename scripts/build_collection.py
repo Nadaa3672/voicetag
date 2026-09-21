@@ -54,14 +54,21 @@ def main(n_conversations: int, skip_generation: bool):
             "scenario": doc["scenario"],
             "trajectory": doc["trajectory"],
             "true_counts": doc["true_counts"],
-            "probs": probs,
+            "probs_raw": probs,
             "spans": spans,
-            "tf": tagging.soft_tf(probs),
         })
         if i % 25 == 0 or i == len(manifest):
             print(f"      tagging {i}/{len(manifest)}")
 
-    sim = tagging.tag_similarity(all_probs)
+    # calibrazione sul prior della collezione (non supervisionata)
+    prior = tagging.collection_prior(all_probs)
+    print("      prior del tagger:",
+          {e: round(float(p), 3) for e, p in zip(config.EMOTIONS, prior)})
+    for d in documents:
+        d["probs"] = tagging.calibrate(d.pop("probs_raw"), prior)
+        d["tf"] = tagging.soft_tf(d["probs"])
+
+    sim = tagging.tag_similarity([d["probs"] for d in documents])
     for d in documents:
         d["tags"] = tagging.mmr_select(d["tf"], sim)
         d["valence"] = tagging.top_valence(d["tf"])
@@ -69,7 +76,7 @@ def main(n_conversations: int, skip_generation: bool):
                          for t in config.TAG_VOCAB}
 
     # --- 3. creazione indice --------------------------------------------
-    index = VoiceTagIndex().build(documents, tag_sim=sim)
+    index = VoiceTagIndex().build(documents, tag_sim=sim, prior=prior)
     index.save()
     stats = index.stats()
     print(f"[3/3] Indice creato: {stats['n_documenti']} documenti, "

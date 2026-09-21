@@ -47,8 +47,12 @@ def main():
 
     tagger_acc = evaluation.tagger_accuracy(manifest, index.docs)
     print("\n--- Tagger " + "-" * 40)
-    print(f"accuratezza 8 classi   : {tagger_acc['accuratezza_8_classi']:.3f}")
-    print(f"accuratezza 3 livelli  : {tagger_acc['accuratezza_3_livelli']:.3f}")
+    print(f"accuratezza 8 classi   : {tagger_acc['accuratezza_8_classi']:.3f}   "
+          f"(caso {tagger_acc['caso_8_classi']:.3f}, "
+          f"maggioranza {tagger_acc['maggioranza_8_classi']:.3f})")
+    print(f"accuratezza 3 livelli  : {tagger_acc['accuratezza_3_livelli']:.3f}   "
+          f"(caso {tagger_acc['caso_3_livelli']:.3f}, "
+          f"maggioranza {tagger_acc['maggioranza_3_livelli']:.3f})")
     print(f"turni valutati         : {tagger_acc['n_turni']}")
 
     out = {
